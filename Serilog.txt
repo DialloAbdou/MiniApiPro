@@ -1,0 +1,8 @@
+Ulisation des Logs dans les Api 
+
+Serilog : est un package extensible et puissant (il pôssèdes des extension qui est Sinks)
+
+pour l'instalation on va installer deux dont : Serilog ApsNetCore et Serilog Console
+on peut aussi installer serilog.Sinks.File => (ce log va gerer tous qui est la gestion des fichiers)
+
+Les Sinks est l'ensemble des package des extensions et les packages
