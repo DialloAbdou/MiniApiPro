@@ -3,42 +3,48 @@ using Microsoft.AspNetCore.Mvc;
 using Serilog;
 using FluentValidation;
 using AspWebApi.validations;
+using AspWebApi.services;
 
 var builder = WebApplication.CreateBuilder();
 
-// Consifiguration  de Serilog
-builder.Logging.ClearProviders(); // permet de supprimer tout les fichier logs par defaut installer par .net core
+//======Configuration Logger Serilog=====
+
+builder.Logging.ClearProviders();
 var loggerConfiguration = new LoggerConfiguration()
     .WriteTo.Console()
-    .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day);
+    .WriteTo.File("logs/log.txt",rollingInterval:RollingInterval.Day);
+
 var logger = loggerConfiguration.CreateLogger();
-builder.Logging.AddSerilog(logger);
+builder.Services.AddSerilog(logger);
 
-// validation
-builder.Services.AddValidatorsFromAssemblyContaining<PersonneValidator>();
+//---- Configuration Validation ------
+builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+
 var app = builder.Build();
-app.MapGet("/hello", ([FromServices] ILogger<Program> logger) =>
-{
-    logger.LogInformation(" log depuis l'endpoint Hello");
-    return Results.Ok("Hello World !");
-});
 
-app.MapGet("/hello/{nom}", ([FromRoute] string nom, ILogger<Program> logger) =>
-{
-    logger.LogInformation("j'ai dis hello à {nom}", nom);// cette chaine ne sera créer une seule fois en memoire
-    Results.Ok(nom);
-});
+ app.MapGet("/bonjour", (ILogger<Program> logger) =>
+ {
+     logger.LogInformation("Bonjour à vous");
+     return Results.Ok("Bonjour le Monde !");
 
-app.MapPost("/personne", ([FromBody] Personne p,
-    [FromServices] IValidator<Personne> validator) =>
+ });
+
+app.MapGet("/bonjour/{nom}", (string nom, ILogger<Program> logger) =>
 {
-    var result = validator.Validate(p);
-    if (!result.IsValid)  return Results.BadRequest(result.Errors); 
-    return Results.Ok(result);
+    logger.LogInformation("Bonjour à vous {nom}", nom);
+    return Results.Ok($"Bonjour {nom}!");
 
 });
 
-
-
-
+//======Validation=====================================
+app.MapPost("/personne", ([FromBody]Personne personne, [FromServices] IValidator<Personne> validator ) =>
+{
+    var resultat = validator.Validate(personne);
+    if (!resultat.IsValid) return Results.BadRequest(resultat.Errors.Select(e => new
+    {
+        e.ErrorMessage,
+        e.PropertyName
+    }));
+    return Results.Ok(personne);
+});
 app.Run();
