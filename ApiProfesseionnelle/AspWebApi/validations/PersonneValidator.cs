@@ -1,4 +1,5 @@
-﻿using FluentValidation;
+﻿using AspWebApi.Data.Models;
+using FluentValidation;
 
 namespace AspWebApi.validations
 {

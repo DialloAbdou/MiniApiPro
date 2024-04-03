@@ -1,4 +1,6 @@
-﻿namespace AspWebApi.services
+﻿using AspWebApi.Data.Models;
+
+namespace AspWebApi.services
 {
     public class ServicePersonne
     {
