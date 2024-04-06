@@ -7,6 +7,12 @@ namespace AspWebApi.Data
     {
         public DbSet<Personne> Personnes { get; set; }
 
+        public PersonneDbContext(DbContextOptions<PersonneDbContext> options)
+            :base(options)
+        {
+            
+        }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Personne>(c =>
@@ -17,9 +23,6 @@ namespace AspWebApi.Data
             });
         }
 
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            optionsBuilder.UseSqlite("FileName=api.db");
-        }
+   
     }
 }
