@@ -7,11 +7,13 @@ using AspWebApi.Data.Models;
 using AspWebApi.Data;
 using Microsoft.EntityFrameworkCore;
 using System.Threading;
+using Microsoft.Extensions.Caching.Memory;
 
 var builder = WebApplication.CreateBuilder();
 
 //------------Configuration----------------
 
+//---------Utilisation des logs-------------------------
 builder.Logging.ClearProviders();
 var loggerConfiguration = new LoggerConfiguration()
     .WriteTo.Console()
@@ -20,10 +22,13 @@ var loggerConfiguration = new LoggerConfiguration()
 var logger = loggerConfiguration.CreateLogger();
 builder.Services.AddSerilog(logger);
 
-builder.Services.AddDbContext<PersonneDbContext>(opt=>opt.UseSqlite(builder.Configuration.GetConnectionString("Sqlite")));
+//-----Configuration de la base de  données ---------------------
+builder.Services.AddDbContext<PersonneDbContext>(opt => opt.UseSqlite(builder.Configuration.GetConnectionString("Sqlite")));
 //---- Configuration Validation ------
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
+//----------Configuration de la cache mémoire ------------
+builder.Services.AddMemoryCache();
 var app = builder.Build();
 //--------Création Base de donnée -----------------------
 app.Services
@@ -33,28 +38,44 @@ app.Services
 //---------lecture des Données--------------------------
 app.MapGet("/personnes", async ([FromServices] PersonneDbContext context) =>
 {
-    var peoples =await context.Personnes.ToListAsync();
+    var peoples = await context.Personnes.ToListAsync();
     return Results.Ok(peoples);
 });
 
-app.MapGet("/personnes/{id:int}", async([FromRoute] int id, [FromServices] PersonneDbContext context) =>
-{
-    var peoples =  await context.Personnes.FirstOrDefaultAsync(p => p.Id == id);
-    if (peoples is null) return Results.NotFound("cette personne n'existe");
-    return Results.Ok(peoples);
-});
+app.MapGet("/personnes/{id:int}", async (
+    [FromRoute] int id,
+    [FromServices] PersonneDbContext context,
+    [FromServices] IMemoryCache cache) =>
+   {
+       if (!cache.TryGetValue<Personne>($"personne_{id}", out var person))
+       {
+           person = await context.Personnes.FirstOrDefaultAsync(p => p.Id == id);
+           if (person is null) return Results.NotFound("cette personne n'existe");
+           cache.Set($"personne_{id}", person);
+           return Results.Ok(person);
+       }
+       return Results.Ok(person);
+   });
+
 
 //------------------Update-----------------------------------------
 app.MapPut("/personnes/{id:int}", async (
     [FromRoute] int id,
     [FromServices] PersonneDbContext context,
-    [FromBody] Personne personne) =>
+    [FromBody] Personne personne,
+    [FromServices] IMemoryCache cache) =>
 {
     //-----------Version EF7-----------
-    var result = await  context.Personnes.Where(p => p.Id == id)
+    var result = await context.Personnes.Where(p => p.Id == id)
     .ExecuteUpdateAsync(pe => pe
     .SetProperty(pe => pe.Nom, personne.Nom)
     .SetProperty(pe => pe.Prenom, personne.Prenom));
+    if (result > 0)
+    {
+        cache.Remove($"personne_{id}");
+        return Results.NoContent();
+    }
+    return Results.NotFound();
     #region Ancien Version Update
     // var peoples = context.Personnes.FirstOrDefault(p => p.Id == id);
     //if( peoples is not null)
@@ -75,7 +96,7 @@ app.MapDelete("/personnes/{id:int}", async (
     [FromServices] PersonneDbContext context) =>
 {
     //---Autre Version Avec EF7----------------------------
-    var result =  await context.Personnes.Where(p => p.Id == id).ExecuteDeleteAsync();
+    var result = await context.Personnes.Where(p => p.Id == id).ExecuteDeleteAsync();
     if (result > 0) return Results.NoContent();
     return Results.NotFound("Cet Objet n'existe pas");
     #region Ancien VersionDelete
@@ -101,7 +122,7 @@ app.MapPost("/personne", async (
         e.PropertyName
     }));
     context.Add(personne);
-   await context.SaveChangesAsync(token);
+    await context.SaveChangesAsync(token);
     return Results.Ok(personne);
 });
 app.Run();
