@@ -27,6 +27,8 @@ builder.Services.AddSerilog(logger);
 
 //-----Configuration de la base de  données ---------------------
 builder.Services.AddDbContext<PersonneDbContext>(opt => opt.UseSqlite(builder.Configuration.GetConnectionString("Sqlite")));
+
+builder.Services.AddScoped<IPersonneService, ServicePersonne>();
 //---- Configuration Validation ------
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
@@ -46,10 +48,10 @@ builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 // utlisation de cache partagé ou distribuée
 //builder.Services.AddDistributedMemoryCache();
-builder.Services.AddStackExchangeRedisCache(opt =>
-{
-    opt.Configuration = "localhost:6379";
-});
+//builder.Services.AddStackExchangeRedisCache(opt =>
+//{
+//    opt.Configuration = "localhost:6379";
+//});
 var app = builder.Build();
 //app.UseOutputCache();
 //--------Création Base de donnée -----------------------
@@ -58,74 +60,84 @@ app.Services
     GetRequiredService<PersonneDbContext>().Database
     .EnsureCreated();
 //---------lecture des Données--------------------------
-app.MapGet("/personnes", async ([FromServices] PersonneDbContext context) =>
+app.MapGet("/personnes", /*async ([FromServices] PersonneDbContext context,*/
+    async ([FromServices] IPersonneService service) =>
 {
-    var peoples = await context.Personnes.ToListAsync();
+    var peoples = await service.GetAllPersonnesAsync();
     return Results.Ok(peoples);
-}).CacheOutput();
+});
+/*.CacheOutput();*/
 
 app.MapGet("/personnes/{id:int}", async (
     [FromRoute] int id,
-    [FromServices] PersonneDbContext context,
+    //[FromServices] PersonneDbContext context,
+    [FromServices] IPersonneService service
+
      /*[FromServices] IMemoryCache cache*/
-     [FromServices] IDistributedCache cache) =>
+     /*[FromServices] IDistributedCache cache*/) =>
    {
        #region CacheMemoireDistribuee
-       var person = await cache.GetAsync<Personne>($"personne_{id}");
-       if (person is null)
-       {
-           person = await context.Personnes.FirstOrDefaultAsync(p => p.Id == id); // on la recupere depuis la base de donnée
-           if (person is null) return Results.NotFound("cette personne n'existe");
-           await cache.SetAsync($"personne_{id}", person);
-           return Results.Ok(person);
-       }
-       #endregion
+       //var person = await cache.GetAsync<Personne>($"personne_{id}");
+       //if (person is null)
+       //{
+       //    person = await context.Personnes.FirstOrDefaultAsync(p => p.Id == id); // on la recupere depuis la base de donnée
+       //    if (person is null) return Results.NotFound("cette personne n'existe");
+       //    await cache.SetAsync($"personne_{id}", person);
+       //    return Results.Ok(person);
+       //}
+       var person = await service.GetPersonByIdAsync(id);
+       if (person is null) return Results.NotFound("cette personne n'existe");
        return Results.Ok(person);
-   }).CacheOutput();
+       #endregion
+   });
+/*.CacheOutput();*/
 
 
 //------------------Update-----------------------------------------
 app.MapPut("/personnes/{id:int}", async (
     [FromRoute] int id,
-    [FromServices] PersonneDbContext context,
-    [FromBody] Personne personne,
-      /* [FromServices] IMemoryCache cache*/
-      [FromServices] IDistributedCache cache) =>
-{
-    //-----------Version EF7-----------
-    var result = await context.Personnes.Where(p => p.Id == id)
-    .ExecuteUpdateAsync(pe => pe
-    .SetProperty(pe => pe.Nom, personne.Nom)
-    .SetProperty(pe => pe.Prenom, personne.Prenom));
-    if (result > 0)
-    {
-        await cache.RemoveAsync($"personne_{id}");
-        return Results.NoContent();
-    }
-    if (result > 0) return Results.Content("Validé");
-    return Results.NotFound();
+    //[FromServices] PersonneDbContext context,
+    [FromServices] IPersonneService service,
+    [FromBody] Personne personne
+    /* [FromServices] IMemoryCache cache*/
+    /*  [FromServices] IDistributedCache cache*/) =>
+ {
+     //-----------Version EF7-----------
+     //var result = await context.Personnes.Where(p => p.Id == id)
+     //.ExecuteUpdateAsync(pe => pe
+     //.SetProperty(pe => pe.Nom, personne.Nom)
+     //.SetProperty(pe => pe.Prenom, personne.Prenom));
+     ////if (result > 0)
+     //{
+     //    await cache.RemoveAsync($"personne_{id}");
+     //    return Results.NoContent();
+     //}
+     var result = await service.UpdatePersonne(id, personne);
+     if (result) return Results.Content("Validé");
+     return Results.NotFound();
 
-    #region Ancien Version Update
-    // var peoples = context.Personnes.FirstOrDefault(p => p.Id == id);
-    //if( peoples is not null)
-    //{
-    //     peoples.Nom = personne.Nom;
-    //     peoples.Prenom = personne.Prenom;
-    //     context.Personnes.Update(peoples);
-    //     context.SaveChanges();
-    //     return Results.NoContent();
-    //}
-    //return Results.NotFound("Cet Objet n'existe pas");
-    #endregion
-});
+     #region Ancien Version Update
+     // var peoples = context.Personnes.FirstOrDefault(p => p.Id == id);
+     //if( peoples is not null)
+     //{
+     //     peoples.Nom = personne.Nom;
+     //     peoples.Prenom = personne.Prenom;
+     //     context.Personnes.Update(peoples);
+     //     context.SaveChanges();
+     //     return Results.NoContent();
+     //}
+     //return Results.NotFound("Cet Objet n'existe pas");
+     #endregion
+ });
 //----------------------Delete-------------------------------------------
 app.MapDelete("/personnes/{id:int}", async (
     [FromRoute] int id,
-    [FromServices] PersonneDbContext context) =>
+
+     [FromServices] IPersonneService service) =>
 {
     //---Autre Version Avec EF7----------------------------
-    var result = await context.Personnes.Where(p => p.Id == id).ExecuteDeleteAsync();
-    if (result > 0) return Results.NoContent();
+    var result = await service.DeletePersonneAsync(id);
+    if (result) return Results.NoContent();
     return Results.NotFound("Cet Objet n'existe pas");
 
     #region Ancien VersionDelete
@@ -141,18 +153,16 @@ app.MapDelete("/personnes/{id:int}", async (
 app.MapPost("/personne", async (
     [FromBody] Personne personne,
     [FromServices] IValidator<Personne> validator,
-    [FromServices] PersonneDbContext context,
-    CancellationToken token) =>
+    //[FromServices] PersonneDbContext context,
+    [FromServices] IPersonneService service) =>
 {
     var resultat = validator.Validate(personne);
-
     if (!resultat.IsValid) return Results.BadRequest(resultat.Errors.Select(e => new
     {
         e.ErrorMessage,
         e.PropertyName
     }));
-    context.Add(personne);
-    await context.SaveChangesAsync(token);
+    await service.AddPersonne(personne);
     return Results.Ok(personne);
 });
 app.Run();

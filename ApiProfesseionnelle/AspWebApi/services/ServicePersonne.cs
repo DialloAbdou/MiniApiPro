@@ -1,26 +1,59 @@
-﻿using AspWebApi.Data.Models;
+﻿using AspWebApi.Data;
+using AspWebApi.Data.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace AspWebApi.services
 {
-    public class ServicePersonne
+    public class ServicePersonne : IPersonneService
     {
-        private List<Personne> personneList;
-        public ServicePersonne()
+        private readonly PersonneDbContext _context;
+        public ServicePersonne(PersonneDbContext context)
         {
-            personneList = new List<Personne>
+            _context = context;
+        }
+
+        public async Task<List<Personne>> GetAllPersonnesAsync()
+        {
+            var peoples = await _context.Personnes.ToListAsync();
+            return peoples;
+        }
+
+        public async Task<Personne> GetPersonByIdAsync(int id)
+        {
+            var person = await _context.Personnes.FirstOrDefaultAsync(p => p.Id == id);
+            return person!;
+        }
+
+        public async Task<Personne> AddPersonne(Personne personne)
+        {
+            await _context.AddAsync(personne);
+            await _context.SaveChangesAsync();
+            return personne;
+        }
+
+        public async Task<bool> DeletePersonneAsync(int id)
+        {
+            var result = await _context.Personnes.Where(p => p.Id == id).ExecuteDeleteAsync();
+
+            if (result > 0)
             {
-                new Personne {  Nom = "DIALLO",Prenom = "Abdou"},
-                new Personne {  Nom = "Camara",Prenom = "Moussa"},
-                new Personne {  Nom = "SYlla",Prenom = "Mamadi"},
-                new Personne { Nom = "Doumbouya",Prenom = "Mamadi"},
-                new Personne { Nom = "Bah",Prenom = "Oury"}
+                return true;
+            }
+            return false;
 
-            };
         }
-
-        public List<Personne> GetPersonnes()
+        public async Task<bool> UpdatePersonne(int id, Personne personne)
         {
-            return personneList;
+            var result = await _context.Personnes.Where(p => p.Id == id)
+                  .ExecuteUpdateAsync(pe => pe
+                  .SetProperty(pe => pe.Nom, personne.Nom)
+                  .SetProperty(pe => pe.Prenom, personne.Prenom));
+
+            if (result > 0) return true;
+                return false;
         }
+
+
+
     }
 }
