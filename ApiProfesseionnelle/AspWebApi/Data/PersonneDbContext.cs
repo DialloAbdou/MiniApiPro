@@ -20,6 +20,7 @@ namespace AspWebApi.Data
                 c.ToTable("Personnes");
                 c.Property(p => p.Nom).HasMaxLength(250);
                 c.Property(p => p.Prenom).HasMaxLength(250);
+              
             });
         }
 

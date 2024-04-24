@@ -55,10 +55,16 @@ builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 var app = builder.Build();
 //app.UseOutputCache();
 //--------Création Base de donnée -----------------------
-app.Services
-    .CreateScope().ServiceProvider.
-    GetRequiredService<PersonneDbContext>().Database
-    .EnsureCreated();
+//app.Services
+//    .CreateScope().ServiceProvider.
+//    GetRequiredService<PersonneDbContext>().Database
+//    .EnsureCreated();
+
+await app.Services
+    .CreateAsyncScope().ServiceProvider
+    .GetRequiredService<PersonneDbContext>().Database
+    .MigrateAsync();
+    
 //---------lecture des Données--------------------------
 app.MapGet("/personnes", /*async ([FromServices] PersonneDbContext context,*/
     async ([FromServices] IPersonneService service) =>
