@@ -11,6 +11,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Caching.Distributed;
 using AspWebApi;
+using AspWebApi.Dto;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -104,7 +105,7 @@ app.MapPut("/personnes/{id:int}", async (
     [FromRoute] int id,
     //[FromServices] PersonneDbContext context,
     [FromServices] IPersonneService service,
-    [FromBody] Personne personne
+    [FromBody] PersonneInput personne
     /* [FromServices] IMemoryCache cache*/
     /*  [FromServices] IDistributedCache cache*/) =>
  {
@@ -157,8 +158,8 @@ app.MapDelete("/personnes/{id:int}", async (
 //---------------- CreateValidation------------------------------------
 
 app.MapPost("/personne", async (
-    [FromBody] Personne personne,
-    [FromServices] IValidator<Personne> validator,
+    [FromBody] PersonneInput personne,
+    [FromServices] IValidator<PersonneInput> validator,
     //[FromServices] PersonneDbContext context,
     [FromServices] IPersonneService service) =>
 {
