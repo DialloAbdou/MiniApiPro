@@ -1,13 +1,11 @@
 ﻿namespace AspWebApi.Dto
 {
-    public record PersonneOutPut
+    public record PersonneOutput
     (
-        int Id,
-        string FullName,
-        DateTime ? DateNaissance
-        
+     int id,
+     string FullName,
+     DateTime ? DateDeNaissance,
+     string? Adresse
     );
-    
-
     
 }

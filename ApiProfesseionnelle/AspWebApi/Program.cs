@@ -12,11 +12,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Caching.Distributed;
 using AspWebApi;
 using AspWebApi.Dto;
+using AutoMapper;
 
 var builder = WebApplication.CreateBuilder(args);
 
 //------------Configuration----------------
-
+//new MapperConfiguration(cfg => cfg.AddProfile<AutoMappingConfiguration>()).AssertConfigurationIsValid();
 //---------Utilisation des logs-------------------------
 builder.Logging.ClearProviders();
 var loggerConfiguration = new LoggerConfiguration()
@@ -32,6 +33,7 @@ builder.Services.AddDbContext<PersonneDbContext>(opt => opt.UseSqlite(builder.Co
 builder.Services.AddScoped<IPersonneService, ServicePersonne>();
 //---- Configuration Validation ------
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+builder.Services.AddAutoMapper(cfg => cfg.AddProfile<AutoMappingConfiguration>());
 
 //----------Configuration de la cache mémoire ------------
 //builder.Services.AddMemoryCache();
@@ -162,7 +164,7 @@ app.MapPost("/personne", async (
     [FromServices] IValidator<PersonneInput> validator,
     //[FromServices] PersonneDbContext context,
     [FromServices] IPersonneService service) =>
-{
+   {
     var resultat = validator.Validate(personne);
     if (!resultat.IsValid) return Results.BadRequest(resultat.Errors.Select(e => new
     {

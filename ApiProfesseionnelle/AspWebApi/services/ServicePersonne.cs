@@ -1,6 +1,7 @@
 ﻿using AspWebApi.Data;
 using AspWebApi.Data.Models;
 using AspWebApi.Dto;
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 
 namespace AspWebApi.services
@@ -8,50 +9,56 @@ namespace AspWebApi.services
     public class ServicePersonne : IPersonneService
     {
         private readonly PersonneDbContext _context;
-        public ServicePersonne(PersonneDbContext context)
+        private IMapper _mapper;
+        public ServicePersonne(PersonneDbContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
-        private PersonneOutPut GetOutPutPersonne(Personne personne)
-        {
-            return new PersonneOutPut
-            (
-              Id: personne.Id,
-              FullName: $"{personne.Nom}, {personne.Prenom}",
-              DateNaissance: personne.DateDeNaissance
+        #region Obsolete
+        //private PersonneOutPut GetOutPutPersonne(Personne personne)
+        //{
+        //    return new PersonneOutPut
+        //    (
+        //      Id: personne.Id,
+        //      FullName: $"{personne.Nom}, {personne.Prenom}",
+        //      DateNaissance: personne.DateDeNaissance,
+        //      Adresse: personne.Adresse
 
-            );
-        }
-        public async Task<List<PersonneOutPut>> GetAllPersonnesAsync()
+        //    );
+        //}
+        #endregion
+        public async Task<List<PersonneOutput>> GetAllPersonnesAsync()
         {
-            var peoples = (await _context.Personnes.ToListAsync()).ConvertAll(GetOutPutPersonne);
+            var peoples = (await _context.Personnes.ToListAsync()).ConvertAll(_mapper.Map<PersonneOutput>);
             return peoples;
 
         }
 
-        public async Task<PersonneOutPut> GetPersonByIdAsync(int id)
+        public async Task<PersonneOutput> GetPersonByIdAsync(int id)
         {
             var person = await _context.Personnes.FirstOrDefaultAsync(p => p.Id == id);
             if (person is not null)
             {
-                var personOut = GetOutPutPersonne(person);
+                var personOut = _mapper.Map<PersonneOutput>(person);
                 return personOut;
             }
             return null!;
         }
 
-        public async Task<PersonneOutPut> AddPersonne(PersonneInput personnein)
+        public async Task<PersonneOutput> AddPersonne(PersonneInput personneIn)
         {
-            var personne = new Personne()
-            {
-                Nom = personnein.Nom,
-                Prenom = personnein.Prenom,
-                DateDeNaissance = personnein.DateNaissance.GetValueOrDefault()
-            };
+            //var personne = new Personne()
+            //{
+            //    Nom = personnein.Nom,
+            //    Prenom = personnein.Prenom,
+            //    DateDeNaissance = personnein.DateNaissance.GetValueOrDefault()
+            //};
+            var personne = _mapper.Map<Personne>(personneIn);
             await _context.AddAsync(personne);
             await _context.SaveChangesAsync();
-           var _personneOut = GetOutPutPersonne(personne);
+           var _personneOut = _mapper.Map<PersonneOutput>(personne);
             return _personneOut;
         }
 
