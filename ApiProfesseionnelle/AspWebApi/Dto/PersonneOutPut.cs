@@ -2,10 +2,9 @@
 {
     public record PersonneOutput
     (
-     int id,
+     int Id,
      string FullName,
-     DateTime ? DateDeNaissance,
-     string? Adresse
+     DateTime ? DateDeNaissance
     );
     
 }

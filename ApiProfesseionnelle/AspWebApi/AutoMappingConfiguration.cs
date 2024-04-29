@@ -12,8 +12,7 @@ namespace AspWebApi
              .ConstructUsing(p => new PersonneOutput(
                   p.Id,
                   $"{p.Nom}, {p.Prenom}",
-                  p.DateDeNaissance== DateTime.MinValue? null:p.DateDeNaissance,
-                  p.Adresse!
+                  p.DateDeNaissance== DateTime.MinValue? null:p.DateDeNaissance
                   
                  ));
             CreateMap<PersonneInput, Personne>();
