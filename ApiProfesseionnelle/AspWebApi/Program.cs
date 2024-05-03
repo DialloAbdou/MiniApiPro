@@ -35,6 +35,9 @@ builder.Services.AddScoped<IPersonneService, ServicePersonne>();
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 builder.Services.AddAutoMapper(cfg => cfg.AddProfile<AutoMappingConfiguration>());
 
+//-----------Configuration De Swagger avant de commencer --------
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 //----------Configuration de la cache mémoire ------------
 //builder.Services.AddMemoryCache();
 
@@ -56,6 +59,11 @@ builder.Services.AddAutoMapper(cfg => cfg.AddProfile<AutoMappingConfiguration>()
 //    opt.Configuration = "localhost:6379";
 //});
 var app = builder.Build();
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 //app.UseOutputCache();
 //--------Création Base de donnée -----------------------
 //app.Services
@@ -67,14 +75,14 @@ await app.Services
     .CreateAsyncScope().ServiceProvider
     .GetRequiredService<PersonneDbContext>().Database
     .MigrateAsync();
-    
+
 //---------lecture des Données--------------------------
 app.MapGet("/personnes", /*async ([FromServices] PersonneDbContext context,*/
     async ([FromServices] IPersonneService service) =>
 {
     var peoples = await service.GetAllPersonnesAsync();
     return Results.Ok(peoples);
-});
+}).WithTags("PersonneManagement");
 /*.CacheOutput();*/
 
 app.MapGet("/personnes/{id:int}", async (
@@ -98,12 +106,12 @@ app.MapGet("/personnes/{id:int}", async (
        if (person is null) return Results.NotFound("cette personne n'existe");
        return Results.Ok(person);
        #endregion
-   });
+   }).WithTags("PersonneManagement");
 /*.CacheOutput();*/
 
 
 //------------------Update-----------------------------------------
-app.MapPut("/personnes/{id:int}", async (
+app.MapPut("/personne/{id:int}", async (
     [FromRoute] int id,
     //[FromServices] PersonneDbContext context,
     [FromServices] IPersonneService service,
@@ -137,7 +145,10 @@ app.MapPut("/personnes/{id:int}", async (
      //}
      //return Results.NotFound("Cet Objet n'existe pas");
      #endregion
- });
+ }).Produces(204)
+ .Produces(404)
+ .Produces<PersonneOutput>(contentType: "application/json")
+ .WithTags("PersonneManagement");
 //----------------------Delete-------------------------------------------
 app.MapDelete("/personnes/{id:int}", async (
     [FromRoute] int id,
@@ -156,7 +167,7 @@ app.MapDelete("/personnes/{id:int}", async (
     //context.SaveChanges();
     //return Results.NoContent();
     #endregion
-});
+}).WithTags("PersonneManagement");
 //---------------- CreateValidation------------------------------------
 
 app.MapPost("/personne", async (
@@ -165,13 +176,13 @@ app.MapPost("/personne", async (
     //[FromServices] PersonneDbContext context,
     [FromServices] IPersonneService service) =>
    {
-    var resultat = validator.Validate(personne);
-    if (!resultat.IsValid) return Results.BadRequest(resultat.Errors.Select(e => new
-    {
-        e.ErrorMessage,
-        e.PropertyName
-    }));
-    await service.AddPersonne(personne);
-    return Results.Ok(personne);
-});
+       var resultat = validator.Validate(personne);
+       if (!resultat.IsValid) return Results.BadRequest(resultat.Errors.Select(e => new
+       {
+           e.ErrorMessage,
+           e.PropertyName
+       }));
+       await service.AddPersonne(personne);
+       return Results.Ok(personne);
+   }).WithTags("PersonneManagement");
 app.Run();

@@ -4,7 +4,7 @@
     (
      int Id,
      string FullName,
-     DateTime ? DateDeNaissance
+     DateTime? DateDeNaissance 
     );
     
 }

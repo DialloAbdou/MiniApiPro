@@ -23,7 +23,7 @@ namespace AspWebApi.services
             (
                Id: personne.Id,
                FullName: $"{personne.Nom}, {personne.Prenom}",
-               DateDeNaissance: personne.DateDeNaissance == DateTime.MinValue ? null : personne.DateDeNaissance
+               DateDeNaissance: personne.DateDeNaissance== DateTime.MinValue ? null : personne.DateDeNaissance
 
 
 
@@ -55,7 +55,7 @@ namespace AspWebApi.services
             {
                 Nom = personneIn.Nom,
                 Prenom = personneIn.Prenom,
-                DateDeNaissance = personneIn.DateNaissance.GetValueOrDefault()
+                DateDeNaissance = personneIn.DateNaissance.GetValueOrDefault() // elle renvoie la premiere date de l'an 1
             };
             //var personne = _mapper.Map<Personne>(personneIn);
             await _context.AddAsync(personne);

@@ -10,7 +10,9 @@ namespace AspWebApi.validations
         {
             RuleFor(p => p.Nom).NotEmpty();
             RuleFor(p => p.Prenom).NotEmpty();
-            RuleFor(p=>p.DateNaissance).LessThanOrEqualTo(DateTime.Now);
+            RuleFor(p => p.DateNaissance).LessThanOrEqualTo(DateTime.Now);
+           
+
 
         }
 
